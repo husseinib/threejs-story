@@ -26,9 +26,9 @@ const copyPluginPatterns = {
 const devServer = {
     contentBase: outputConfig.destPath,
     // https: true,
-    // port: "8080",
-    // host: "0.0.0.0",
-    // disableHostCheck: true
+    port: "8080",
+    host: "localhost",
+    disableHostCheck: true
 };
 
 
