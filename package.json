@@ -4,8 +4,9 @@
     "description": "A starter project for using Three.js, TypeScript, SCSS and Webpack.",
     "main": "index.js",
     "scripts": {
-        "dev": "webpack serve --mode development --progress --hot --config ./webpack.config.development.js",
-        "build": "webpack --mode production --config ./webpack.config.production.js"
+        "deploy": "gh-pages -d dist",
+        "dev": "SET NODE_OPTIONS=--openssl-legacy-provider && webpack serve --mode development --progress --hot --config ./webpack.config.development.js",
+        "build": "SET NODE_OPTIONS=--openssl-legacy-provider && webpack --mode production --config ./webpack.config.production.js"
     },
     "keywords": [
         "three.js",
@@ -16,6 +17,7 @@
     "author": "Grant Bartlett",
     "license": "MIT",
     "dependencies": {
+        "gh-pages": "^6.1.1",
         "three": "^0.126.1"
     },
     "devDependencies": {
