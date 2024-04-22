@@ -8,13 +8,13 @@ export class App
     private imagePlane: Mesh;
     private isDragging: boolean;
     private lastX: number;
-    private lastY: number;
+    private limit: number;
     private sensitivity: number;
 
     constructor()
     {
         this.camera = new PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 1000);
-        this.camera.position.z = 500;
+        this.camera.position.z = 454;
         this.scene = new Scene();
         this.renderer = new WebGLRenderer({ antialias: true, alpha: true });
         this.renderer.setClearColor(0x000000, 0); // the default
@@ -24,7 +24,7 @@ export class App
         this.imagePlane = new Mesh();
         this.isDragging = false;
         this.lastX = 0;
-        this.lastY = 0;
+        this.limit = 179;
         this.sensitivity = 1;
 
         document.body.appendChild(this.renderer.domElement);
@@ -42,7 +42,6 @@ export class App
         this.renderer.domElement.addEventListener('mousedown', (event) => {
             this.isDragging = true;
             this.lastX = event.clientX;
-            this.lastY = event.clientY;
         });
 
         this.renderer.domElement.addEventListener('mouseup', () => {
@@ -54,10 +53,11 @@ export class App
         
             const deltaX = event.clientX - this.lastX;
         
-            this.camera.position.x -= deltaX * this.sensitivity;
+            // Limit camera movement to -500 and 500 on x axis
+            const newX = this.camera.position.x - deltaX * this.sensitivity;
+            this.camera.position.x = Math.max(-this.limit, Math.min(this.limit, newX));
         
             this.lastX = event.clientX;
-            this.lastY = event.clientY;
         
             this.renderer.render(this.scene, this.camera);
         });
