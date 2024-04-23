@@ -1,4 +1,4 @@
-import { PlaneGeometry, Mesh, MeshBasicMaterial, PerspectiveCamera, Scene, TextureLoader, WebGLRenderer, Raycaster, Vector2 } from "three";
+import { PlaneGeometry, Mesh, MeshBasicMaterial, PerspectiveCamera, Scene, TextureLoader, WebGLRenderer, Raycaster, Vector2, Vector3, CanvasTexture, SpriteMaterial, Sprite } from "three";
 
 export class App
 {
@@ -16,6 +16,8 @@ export class App
     private hoverMaterials: MeshBasicMaterial[];
     private layerPositions: Vector2[];
     private layerScales: Vector2[];
+    private annotation: HTMLElement | null;
+    private currentPopupPosition: Vector3;
 
     constructor()
     {
@@ -64,6 +66,9 @@ export class App
             new Vector2(2, 2)
         ];
 
+        this.annotation = document.querySelector('.annotation');
+        this.currentPopupPosition = new Vector3();
+
         document.body.appendChild(this.renderer.domElement);
         window.addEventListener("resize", this.onWindowResize.bind(this), false);
 
@@ -71,6 +76,7 @@ export class App
         this.drawBackground();
         this.drawForeground();
         this.drawLayers();
+        // this.drawAnnotation();
 
         this.animate();
     }
@@ -113,8 +119,21 @@ export class App
                 this.changeMaterial(this.layers[layerId], this.hoverMaterials[layerId]);
             } else {
                 this.resetMaterials();
+                this.hidePopup();
             }
         });
+
+        this.renderer.domElement.addEventListener('click', (event) => {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, this.camera);
+            intersects = raycaster.intersectObjects(this.colliders);
+            if (intersects.length > 0) {
+                let layerId = intersects[0].object.userData.id;
+                this.currentPopupPosition = this.colliders[layerId].position;
+                this.showPopup(this.layers[layerId]);
+            }
+        })
     }
 
     private drawBackground(): void
@@ -151,7 +170,6 @@ export class App
             layer.userData = { id: i - 1 };
             this.scene.add(layer);
 
-            // add red boxes to the layers
             const boxGeometry = new PlaneGeometry(100, 100);
             const boxMaterial = new MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.5 });
             const box = new Mesh(boxGeometry, boxMaterial);
@@ -194,10 +212,82 @@ export class App
         this.renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
+    private showPopup(layer: Mesh): void
+    {
+        const vector = layer.position.clone();
+        const canvas = this.renderer.domElement;
+        
+        vector.project(this.camera);
+        
+        vector.x = Math.round((0.5 + vector.x / 2) * (canvas.width / window.devicePixelRatio));
+        vector.y = Math.round((0.5 - vector.y / 2) * (canvas.height / window.devicePixelRatio));
+        
+        if (this.annotation instanceof HTMLElement) {
+            this.annotation.style.top = `${vector.y}px`;
+            this.annotation.style.left = `${vector.x}px`;
+            this.annotation.style.display = 'block';
+        }
+    }
+
+    private hidePopup() : void
+    {
+        if (this.annotation instanceof HTMLElement) {
+            this.annotation.style.display = 'none';
+        }
+    }
+
+    private drawAnnotation(): void
+    {
+        const canvas = document.getElementById('popup');
+        if (!(canvas instanceof HTMLCanvasElement)) return;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const x = 32;
+        const y = 32;
+        const radius = 30;
+        const startAngle = 0;
+        const endAngle = Math.PI * 2;
+
+        ctx.fillStyle = 'rgb(0, 0, 0)';
+        ctx.beginPath();
+        ctx.arc(x, y, radius, startAngle, endAngle);
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgb(255, 255, 255)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, startAngle, endAngle);
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgb(255, 255, 255)';
+        ctx.font = '32px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('1', x, y);
+    }
+
+    private updateScreenPosition() : void 
+    {
+        const vector = new Vector3(this.currentPopupPosition.x, this.currentPopupPosition.y, this.currentPopupPosition.z);
+        const canvas = this.renderer.domElement;
+    
+        vector.project(this.camera);
+    
+        vector.x = Math.round((0.5 + vector.x / 2) * (canvas.width / window.devicePixelRatio));
+        vector.y = Math.round((0.5 - vector.y / 2) * (canvas.height / window.devicePixelRatio));
+
+        if (!(this.annotation instanceof HTMLElement)) return;
+        this.annotation.style.top = `${vector.y}px`;
+        this.annotation.style.left = `${vector.x}px`;
+    }
+
     private animate(): void
     {
         requestAnimationFrame(this.animate.bind(this));
         this.renderer.render(this.scene, this.camera);
+        this.updateScreenPosition();
     }
 }
 
