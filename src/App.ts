@@ -1,4 +1,5 @@
-import { PlaneGeometry, Mesh, MeshBasicMaterial, PerspectiveCamera, Scene, TextureLoader, WebGLRenderer, Raycaster, Vector2, Vector3, CanvasTexture, SpriteMaterial, Sprite } from "three";
+import { PlaneGeometry, Mesh, MeshBasicMaterial, PerspectiveCamera, Scene, TextureLoader, WebGLRenderer, Raycaster, Vector2, Vector3, CanvasTexture, SpriteMaterial, Sprite, Shape, ShapeGeometry  } from "three";
+import { ConvexGeometry } from "three/examples/jsm/geometries/ConvexGeometry";
 
 export class App
 {
@@ -18,12 +19,13 @@ export class App
     private layerScales: Vector2[];
     private annotation: HTMLElement | null;
     private currentPopupPosition: Vector3;
+    private positions: Vector3[];
 
     constructor()
     {
         this.camera = new PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 1000);
+        this.camera.fov = 45;
         this.camera.position.z = 454;
-        // this.camera.position.z = 1000;
         this.scene = new Scene();
         this.renderer = new WebGLRenderer({ antialias: true, alpha: true });
         this.renderer.setClearColor(0x000000, 0); // the default
@@ -33,9 +35,10 @@ export class App
         this.imagePlane = new Mesh();
         this.isDragging = false;
         this.lastX = 0;
-        this.limit = 179;
+        this.limit = 200;
         this.sensitivity = 1;
 
+        this.positions = [];
         this.layers = [];
         this.colliders = [];
         this.materials = [];
@@ -83,13 +86,53 @@ export class App
 
     private addEventListeners(): void
     {
+        let a_raycaster = new Raycaster();
+        let a_mouse = new Vector2();
+        let a_intersects;
         this.renderer.domElement.addEventListener('mousedown', (event) => {
             this.isDragging = true;
             this.lastX = event.clientX;
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+            a_raycaster.setFromCamera(a_mouse, this.camera);
+            a_intersects = raycaster.intersectObjects(this.colliders);
+            if (a_intersects.length > 0) {
+                let point = a_intersects[0].point;
+                const boxGeometry = new PlaneGeometry(100, 100);
+                const boxMaterial = new MeshBasicMaterial({ color: 0xff1510, transparent: true, opacity: 0.5 });
+                const box = new Mesh(boxGeometry, boxMaterial);
+                box.position.z = 1;
+                box.position.setX(point.x);
+                box.position.setY(point.y);
+                box.scale.setX(0.05);
+                box.scale.setY(0.05);
+                box.visible = true;
+                this.scene.add(box);
+                console.log(point);
+
+                this.positions.push(point);
+            }
         });
 
         this.renderer.domElement.addEventListener('mouseup', () => {
             this.isDragging = false;
+            let stringified = JSON.stringify(this.positions);
+            console.log(stringified);
+
+            if(this.positions.length > 10) {
+                var shape = new Shape();
+                for(let i = 0; i < this.positions.length; i++) {
+                    if (i == 0) {
+                        shape.moveTo(this.positions[i].x, this.positions[i].y);
+                    } else {
+                        shape.lineTo(this.positions[i].x, this.positions[i].y);
+                    }
+                }
+                let geometry = new ShapeGeometry( shape );
+                let mesh = new Mesh( geometry, new MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.5 }));
+                this.scene.add(mesh);
+            }
         });
 
         this.renderer.domElement.addEventListener('mousemove', (event) => {
@@ -99,6 +142,7 @@ export class App
         
             const newX = this.camera.position.x - deltaX * this.sensitivity;
             this.camera.position.x = Math.max(-this.limit, Math.min(this.limit, newX));
+            // this.camera.position.x = newX;
         
             this.lastX = event.clientX;
         
@@ -131,7 +175,7 @@ export class App
             if (intersects.length > 0) {
                 let layerId = intersects[0].object.userData.id;
                 this.currentPopupPosition = this.colliders[layerId].position;
-                this.showPopup(this.layers[layerId]);
+                // this.showPopup(this.layers[layerId]);
             }
         })
     }
